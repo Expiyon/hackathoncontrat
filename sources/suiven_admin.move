@@ -39,6 +39,11 @@ module suiven::suiven_admin {
             id: object::new(ctx),
         };
         transfer::transfer(admin_cap, tx_context::sender(ctx));
+        let organizer_cap = OrganizerCap {
+            id: object::new(ctx),
+            organizer: ctx.sender(),
+        };
+        transfer::transfer(organizer_cap, ctx.sender());
     }
 
     /// Admin tarafından yeni bir organizatör yetkisi verir
