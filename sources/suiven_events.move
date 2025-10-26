@@ -1,12 +1,15 @@
 module suiven::suiven_events {
     use sui::event;
-    use suiven::suiven_admin::OrganizerCap;
+    use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
+    use sui::sui::SUI;
+    use suiven::suiven_admin::{OrganizerCap, AdminCap};
 
     // ========== EVENTS ==========
     public struct EventCreated has copy, drop {
         event_id: ID,
         organizer: address,
-        metadata_uri: vector<u8>,
+        metadata_uri: std::string::String,
         start_ts: u64,
         end_ts: u64,
         capacity: u64,
@@ -26,29 +29,32 @@ module suiven::suiven_events {
     public struct Event has key, store {
         id: UID,
         organizer: address,
-        metadata_uri: vector<u8>, // Walrus CID veya IPFS URI
+        event_name: std::string::String, // Etkinlik adı
+        metadata_uri: std::string::String, // Walrus CID veya IPFS URI
         start_ts: u64,
         end_ts: u64,
         capacity: u64,
         sold: u64,
         price_amount: u128,
         price_is_sui: bool,
-        price_token_type: vector<u8>, // Token type string (opsiyonel)
+        price_token_type: std::string::String, // Token type string (opsiyonel)
         royalty_bps: u16, // Basis points (100 = 1%)
         transferable: bool,
         resale_window_end: u64, // Bu zamandan sonra transfer yasak
+        balance: Balance<SUI>, // Toplanan fonlar
     }
 
     /// Yeni bir etkinlik oluşturur
     public fun create_event(
         _cap: &OrganizerCap,
-        metadata_uri: vector<u8>,
+        event_name: std::string::String,
+        metadata_uri: std::string::String,
         start_ts: u64,
         end_ts: u64,
         capacity: u64,
         price_amount: u128,
         price_is_sui: bool,
-        price_token_type: vector<u8>,
+        price_token_type: std::string::String,
         royalty_bps: u16,
         transferable: bool,
         resale_window_end: u64,
@@ -64,6 +70,7 @@ module suiven::suiven_events {
         let event = Event {
             id: event_uid,
             organizer: tx_context::sender(ctx),
+            event_name,
             metadata_uri,
             start_ts,
             end_ts,
@@ -75,6 +82,7 @@ module suiven::suiven_events {
             royalty_bps,
             transferable,
             resale_window_end,
+            balance: balance::zero<SUI>(),
         };
 
         // Emit event creation
@@ -105,7 +113,8 @@ module suiven::suiven_events {
     public fun get_event_info(event: &Event): (
         ID,
         address,
-        vector<u8>,
+        std::string::String,
+        std::string::String,
         u64,
         u64,
         u64,
@@ -119,6 +128,7 @@ module suiven::suiven_events {
         (
             object::uid_to_inner(&event.id),
             event.organizer,
+            event.event_name,
             event.metadata_uri,
             event.start_ts,
             event.end_ts,
@@ -150,5 +160,43 @@ module suiven::suiven_events {
     /// Etkinliğin transfer kurallarını döndürür
     public fun get_transfer_rules(event: &Event): (bool, u64) {
         (event.transferable, event.resale_window_end)
+    }
+
+    /// Etkinlik adını döndürür
+    public fun get_event_name(event: &Event): std::string::String {
+        event.event_name
+    }
+
+    /// Ödemeyi etkinlik bakiyesine ekler (sadece ticket modülü tarafından çağrılır)
+    public(package) fun deposit_payment(event: &mut Event, payment: Balance<SUI>) {
+        balance::join(&mut event.balance, payment);
+    }
+
+    /// Etkinlik bakiyesinin değerini döndürür
+    public fun get_balance_value(event: &Event): u64 {
+        balance::value(&event.balance)
+    }
+
+    /// Admin tarafından toplanan fonları çeker
+    public fun withdraw_funds(
+        _admin: &AdminCap,
+        event: &mut Event,
+        ctx: &mut TxContext
+    ) {
+        let amount = balance::value(&event.balance);
+        if (amount > 0) {
+            let withdrawn = balance::withdraw_all(&mut event.balance);
+            let coin = coin::from_balance(withdrawn, ctx);
+            transfer::public_transfer(coin, tx_context::sender(ctx));
+        }
+    }
+
+    /// Entry point: Admin toplanan fonları çeker
+    public entry fun admin_withdraw_event_funds(
+        admin: &AdminCap,
+        event: &mut Event,
+        ctx: &mut TxContext
+    ) {
+        withdraw_funds(admin, event, ctx);
     }
 }

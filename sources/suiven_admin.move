@@ -100,4 +100,12 @@ module suiven::suiven_admin {
     public fun decrement_supply(cap: &mut TreasuryCap, amount: u64) {
         cap.total_supply = cap.total_supply - amount;
     }
+
+    #[test_only]
+    /// Test için AdminCap oluşturur
+    public fun create_admin_cap_for_testing(ctx: &mut TxContext): AdminCap {
+        AdminCap {
+            id: object::new(ctx),
+        }
+    }
 }
