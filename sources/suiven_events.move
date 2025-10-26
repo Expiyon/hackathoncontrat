@@ -1,5 +1,20 @@
 module suiven::suiven_events {
+    use sui::event;
     use suiven::suiven_admin::OrganizerCap;
+
+    // ========== EVENTS ==========
+    public struct EventCreated has copy, drop {
+        event_id: ID,
+        organizer: address,
+        metadata_uri: vector<u8>,
+        start_ts: u64,
+        end_ts: u64,
+        capacity: u64,
+        price_amount: u128,
+        price_is_sui: bool,
+        royalty_bps: u16,
+        transferable: bool,
+    }
 
     // ========== HATALAR ==========
     // E_INVALID_CAPACITY = 100: Kapasite 0'dan büyük olmalı
@@ -43,8 +58,11 @@ module suiven::suiven_events {
         assert!(start_ts < end_ts, 101); // E_INVALID_TIMEFRAME
         assert!(royalty_bps <= 10000, 102); // E_INVALID_ROYALTY
 
+        let event_uid = object::new(ctx);
+        let event_id = object::uid_to_inner(&event_uid);
+
         let event = Event {
-            id: object::new(ctx),
+            id: event_uid,
             organizer: tx_context::sender(ctx),
             metadata_uri,
             start_ts,
@@ -58,6 +76,20 @@ module suiven::suiven_events {
             transferable,
             resale_window_end,
         };
+
+        // Emit event creation
+        event::emit(EventCreated {
+            event_id,
+            organizer: tx_context::sender(ctx),
+            metadata_uri,
+            start_ts,
+            end_ts,
+            capacity,
+            price_amount,
+            price_is_sui,
+            royalty_bps,
+            transferable,
+        });
 
         // Etkinliği shared object olarak paylaşır
         transfer::share_object(event);

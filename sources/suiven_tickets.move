@@ -1,7 +1,16 @@
 module suiven::suiven_tickets {
+    use sui::event;
     use sui::clock::{Self, Clock};
     use suiven::suiven_events::{Self, Event};
     use suiven::suiven_admin::VerifierCap;
+
+    // ========== EVENTS ==========
+    public struct TicketPurchased has copy, drop {
+        ticket_id: ID,
+        event_id: ID,
+        buyer: address,
+        minted_at: u64,
+    }
 
     // ========== HATALAR ==========
     // E_TICKET_USED = 200: Bilet zaten kullanılmış
@@ -39,14 +48,28 @@ module suiven::suiven_tickets {
         suiven_events::increment_sold(event);
 
         // Ticket NFT oluştur
+        let ticket_uid = object::new(ctx);
+        let ticket_id = object::uid_to_inner(&ticket_uid);
+        let event_id = object::id(event);
+        let minted_at = clock::timestamp_ms(clock);
+        let buyer = tx_context::sender(ctx);
+
         let ticket = TicketNFT {
-            id: object::new(ctx),
-            event_id: object::id(event),
-            owner: tx_context::sender(ctx),
+            id: ticket_uid,
+            event_id,
+            owner: buyer,
             used: false,
             metadata_uri,
-            minted_at: clock::timestamp_ms(clock),
+            minted_at,
         };
+
+        // Emit ticket purchase event
+        event::emit(TicketPurchased {
+            ticket_id,
+            event_id,
+            buyer,
+            minted_at,
+        });
 
         ticket
     }
@@ -69,14 +92,28 @@ module suiven::suiven_tickets {
         suiven_events::increment_sold(event);
 
         // Ticket NFT oluştur
+        let ticket_uid = object::new(ctx);
+        let ticket_id = object::uid_to_inner(&ticket_uid);
+        let event_id = object::id(event);
+        let minted_at = clock::timestamp_ms(clock);
+        let buyer = tx_context::sender(ctx);
+
         let ticket = TicketNFT {
-            id: object::new(ctx),
-            event_id: object::id(event),
-            owner: tx_context::sender(ctx),
+            id: ticket_uid,
+            event_id,
+            owner: buyer,
             used: false,
             metadata_uri,
-            minted_at: clock::timestamp_ms(clock),
+            minted_at,
         };
+
+        // Emit ticket purchase event
+        event::emit(TicketPurchased {
+            ticket_id,
+            event_id,
+            buyer,
+            minted_at,
+        });
 
         ticket
     }
