@@ -144,4 +144,40 @@ module suiven::suiven_tickets {
     public fun transfer_ticket_simple(ticket: TicketNFT, to: address) {
         transfer::public_transfer(ticket, to);
     }
+
+    /// Entry point: ödeme miktarıyla bilet satın alır ve kullanıcıya yollar
+    public entry fun purchase_with_payment(
+        event: &mut Event,
+        payment_amount: u128,
+        metadata_uri: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let ticket = burn_and_mint(
+            event,
+            payment_amount,
+            metadata_uri,
+            clock,
+            ctx
+        );
+        transfer::public_transfer(ticket, tx_context::sender(ctx));
+    }
+
+    /// Entry point: belirli bir tokenı tutan kullanıcıya bilet verir
+    public entry fun purchase_if_holds_token(
+        event: &mut Event,
+        has_required_token: bool,
+        metadata_uri: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let ticket = mint_if_holds(
+            event,
+            has_required_token,
+            metadata_uri,
+            clock,
+            ctx
+        );
+        transfer::public_transfer(ticket, tx_context::sender(ctx));
+    }
 }
