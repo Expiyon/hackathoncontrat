@@ -1,8 +1,4 @@
 module suiven::suiven_admin {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
-
     // ========== HATALAR ==========
     // E_NOT_ADMIN = 1: Sadece AdminCap sahibi bu işlemi yapabilir
     // E_INVALID_DECIMALS = 2: Decimals 0-18 arasında olmalı

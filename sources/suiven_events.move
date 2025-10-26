@@ -1,7 +1,4 @@
 module suiven::suiven_events {
-    use sui::object::{Self, UID, ID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use suiven::suiven_admin::OrganizerCap;
 
     // ========== HATALAR ==========
@@ -29,7 +26,7 @@ module suiven::suiven_events {
 
     /// Yeni bir etkinlik oluşturur
     public fun create_event(
-        cap: &OrganizerCap,
+        _cap: &OrganizerCap,
         metadata_uri: vector<u8>,
         start_ts: u64,
         end_ts: u64,
@@ -41,12 +38,12 @@ module suiven::suiven_events {
         transferable: bool,
         resale_window_end: u64,
         ctx: &mut TxContext
-    ): Event {
+    ) {
         assert!(capacity > 0, 100); // E_INVALID_CAPACITY
         assert!(start_ts < end_ts, 101); // E_INVALID_TIMEFRAME
         assert!(royalty_bps <= 10000, 102); // E_INVALID_ROYALTY
 
-        Event {
+        let event = Event {
             id: object::new(ctx),
             organizer: tx_context::sender(ctx),
             metadata_uri,
@@ -60,7 +57,10 @@ module suiven::suiven_events {
             royalty_bps,
             transferable,
             resale_window_end,
-        }
+        };
+
+        // Etkinliği shared object olarak paylaşır
+        transfer::share_object(event);
     }
 
     /// Etkinliğin satılan bilet sayısını artırır (sadece ticket modülü tarafından çağrılır)
@@ -118,10 +118,5 @@ module suiven::suiven_events {
     /// Etkinliğin transfer kurallarını döndürür
     public fun get_transfer_rules(event: &Event): (bool, u64) {
         (event.transferable, event.resale_window_end)
-    }
-
-    /// Etkinliği shared object olarak paylaşır
-    public fun share_event(event: Event) {
-        transfer::share_object(event);
     }
 }

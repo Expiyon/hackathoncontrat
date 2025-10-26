@@ -1,7 +1,4 @@
 module suiven::suiven_poap {
-    use sui::object::{Self, UID, ID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::clock::{Self, Clock};
     use suiven::suiven_admin::VerifierCap;
     use suiven::suiven_tickets::TicketNFT;

@@ -1,7 +1,4 @@
 module suiven::suiven_token {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use suiven::suiven_admin::TreasuryCap;
 
     // ========== HATALAR ==========
