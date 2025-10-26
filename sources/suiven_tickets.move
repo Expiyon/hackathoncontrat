@@ -200,6 +200,12 @@ module suiven::suiven_tickets {
         ticket.owner
     }
 
+    /// Bileti yakar (consume ederek siler)
+    public fun burn_ticket(ticket: TicketNFT) {
+        let TicketNFT { id, event_id: _, event_name: _, owner: _, used: _, metadata_uri: _, minted_at: _ } = ticket;
+        object::delete(id);
+    }
+
     /// Bileti transfer eder (basit versiyon - kurallar olmadan)
     public fun transfer_ticket_simple(ticket: TicketNFT, to: address) {
         transfer::public_transfer(ticket, to);

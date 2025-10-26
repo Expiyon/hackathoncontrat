@@ -3,7 +3,6 @@ module suiven::suiven_poap {
     use sui::package;
     use sui::display;
     use std::string::{Self, String};
-    use suiven::suiven_admin::VerifierCap;
     use suiven::suiven_tickets::TicketNFT;
 
     // ========== ONE-TIME WITNESS ==========
@@ -12,8 +11,8 @@ module suiven::suiven_poap {
     // ========== HATALAR ==========
     // E_TICKET_NOT_USED = 300: POAP sadece kullanılmış biletler için verilebilir
 
-    /// POAPNFT: Etkinliğe katılım kanıtı NFT
-    public struct POAPNFT has key, store {
+    /// POAPNFT: Etkinliğe katılım kanıtı NFT (Soulbound - transfer edilemez)
+    public struct POAPNFT has key {
         id: UID,
         event_id: ID,
         event_name: std::string::String,
@@ -22,20 +21,22 @@ module suiven::suiven_poap {
         metadata_uri: vector<u8>,
     }
 
-    /// Kullanılmış bilet için POAP mint eder
-    public fun mint_poap(
-        _verifier: &VerifierCap,
-        ticket: &TicketNFT,
+    /// Bileti yakar ve POAP mint eder (tek transaction'da)
+    public fun burn_ticket_and_mint_poap(
+        ticket: TicketNFT,
         metadata_uri: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
     ): POAPNFT {
-        // Bilet kullanılmış olmalı
         use suiven::suiven_tickets;
-        assert!(suiven_tickets::is_ticket_used(ticket), 300); // E_TICKET_NOT_USED
 
-        let (_, event_id, event_name, owner, _, _, _) = suiven_tickets::get_ticket_info(ticket);
+        // Bilet bilgilerini al
+        let (_, event_id, event_name, owner, _, _, _) = suiven_tickets::get_ticket_info(&ticket);
 
+        // Bileti yak (consume ederek)
+        suiven_tickets::burn_ticket(ticket);
+
+        // POAP mint et
         let poap = POAPNFT {
             id: object::new(ctx),
             event_id,
@@ -46,11 +47,6 @@ module suiven::suiven_poap {
         };
 
         poap
-    }
-
-    /// POAP'ı kullanıcıya transfer eder
-    public fun transfer_poap(poap: POAPNFT, to: address) {
-        transfer::public_transfer(poap, to);
     }
 
     /// POAP bilgilerini döndürür
@@ -68,6 +64,23 @@ module suiven::suiven_poap {
     /// POAP sahibini döndürür
     public fun get_poap_holder(poap: &POAPNFT): address {
         poap.holder
+    }
+
+    /// Entry point: Bileti yakar ve POAP'ı kullanıcıya transfer eder
+    public entry fun burn_ticket_and_mint_poap_entry(
+        ticket: TicketNFT,
+        metadata_uri: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let poap = burn_ticket_and_mint_poap(
+            ticket,
+            metadata_uri,
+            clock,
+            ctx
+        );
+        // POAP soulbound olduğu için sadece transfer ediyoruz
+        transfer::transfer(poap, tx_context::sender(ctx));
     }
 
     /// Module initializer - creates Display for POAPNFT
